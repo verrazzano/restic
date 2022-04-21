@@ -1,32 +1,31 @@
 package limiter
 
 import (
+	"bytes"
 	"io"
 	"net/http"
-
-	"github.com/juju/ratelimit"
 )
 
 type staticLimiter struct {
-	upstream   *ratelimit.Bucket
-	downstream *ratelimit.Bucket
+	upstream   int
+	downstream int
 }
 
 // NewStaticLimiter constructs a Limiter with a fixed (static) upload and
 // download rate cap
 func NewStaticLimiter(uploadKb, downloadKb int) Limiter {
 	var (
-		upstreamBucket   *ratelimit.Bucket
-		downstreamBucket *ratelimit.Bucket
+		upstreamBucket   = 0
+		downstreamBucket = 0
 	)
 
-	if uploadKb > 0 {
-		upstreamBucket = ratelimit.NewBucketWithRate(toByteRate(uploadKb), int64(toByteRate(uploadKb)))
-	}
-
-	if downloadKb > 0 {
-		downstreamBucket = ratelimit.NewBucketWithRate(toByteRate(downloadKb), int64(toByteRate(downloadKb)))
-	}
+	//if uploadKb > 0 {
+	//	upstreamBucket = ratelimit.NewBucketWithRate(toByteRate(uploadKb), int64(toByteRate(uploadKb)))
+	//}
+	//
+	//if downloadKb > 0 {
+	//	downstreamBucket = ratelimit.NewBucketWithRate(toByteRate(downloadKb), int64(toByteRate(downloadKb)))
+	//}
 
 	return staticLimiter{
 		upstream:   upstreamBucket,
@@ -35,19 +34,19 @@ func NewStaticLimiter(uploadKb, downloadKb int) Limiter {
 }
 
 func (l staticLimiter) Upstream(r io.Reader) io.Reader {
-	return l.limitReader(r, l.upstream)
+	return bytes.NewReader([]byte{})
 }
 
 func (l staticLimiter) UpstreamWriter(w io.Writer) io.Writer {
-	return l.limitWriter(w, l.upstream)
+	return new(bytes.Buffer)
 }
 
 func (l staticLimiter) Downstream(r io.Reader) io.Reader {
-	return l.limitReader(r, l.downstream)
+	return bytes.NewReader([]byte{})
 }
 
 func (l staticLimiter) DownstreamWriter(w io.Writer) io.Writer {
-	return l.limitWriter(w, l.downstream)
+	return new(bytes.Buffer)
 }
 
 type roundTripper func(*http.Request) (*http.Response, error)
@@ -88,18 +87,18 @@ func (l staticLimiter) Transport(rt http.RoundTripper) http.RoundTripper {
 	})
 }
 
-func (l staticLimiter) limitReader(r io.Reader, b *ratelimit.Bucket) io.Reader {
-	if b == nil {
+func (l staticLimiter) limitReader(r io.Reader, b int) io.Reader {
+	if b == 0 {
 		return r
 	}
-	return ratelimit.Reader(r, b)
+	return bytes.NewReader([]byte{})
 }
 
-func (l staticLimiter) limitWriter(w io.Writer, b *ratelimit.Bucket) io.Writer {
-	if b == nil {
+func (l staticLimiter) limitWriter(w io.Writer, b int) io.Writer {
+	if b == 0 {
 		return w
 	}
-	return ratelimit.Writer(w, b)
+	return new(bytes.Buffer)
 }
 
 func toByteRate(val int) float64 {

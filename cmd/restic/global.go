@@ -26,7 +26,6 @@ import (
 	"github.com/restic/restic/internal/cache"
 	"github.com/restic/restic/internal/debug"
 	"github.com/restic/restic/internal/fs"
-	"github.com/restic/restic/internal/limiter"
 	"github.com/restic/restic/internal/options"
 	"github.com/restic/restic/internal/repository"
 	"github.com/restic/restic/internal/restic"
@@ -690,8 +689,8 @@ func open(s string, gopts GlobalOptions, opts options.Options) (restic.Backend, 
 	}
 
 	// wrap the transport so that the throughput via HTTP is limited
-	lim := limiter.NewStaticLimiter(gopts.LimitUploadKb, gopts.LimitDownloadKb)
-	rt = lim.Transport(rt)
+	//lim := limiter.NewStaticLimiter(gopts.LimitUploadKb, gopts.LimitDownloadKb)
+	//rt = lim.Transport(rt)
 
 	switch loc.Scheme {
 	case "local":
@@ -710,8 +709,8 @@ func open(s string, gopts GlobalOptions, opts options.Options) (restic.Backend, 
 		be, err = b2.Open(globalOptions.ctx, cfg.(b2.Config), rt)
 	case "rest":
 		be, err = rest.Open(cfg.(rest.Config), rt)
-	case "rclone":
-		be, err = rclone.Open(cfg.(rclone.Config), lim)
+	//case "rclone":
+	//	be, err = rclone.Open(cfg.(rclone.Config), lim)
 
 	default:
 		return nil, errors.Fatalf("invalid backend: %q", loc.Scheme)
@@ -729,10 +728,10 @@ func open(s string, gopts GlobalOptions, opts options.Options) (restic.Backend, 
 		}
 	}
 
-	if loc.Scheme == "local" || loc.Scheme == "sftp" {
-		// wrap the backend in a LimitBackend so that the throughput is limited
-		be = limiter.LimitBackend(be, lim)
-	}
+	//if loc.Scheme == "local" || loc.Scheme == "sftp" {
+	//	// wrap the backend in a LimitBackend so that the throughput is limited
+	//	be = limiter.LimitBackend(be, lim)
+	//}
 
 	// check if config is there
 	fi, err := be.Stat(globalOptions.ctx, restic.Handle{Type: restic.ConfigFile})
